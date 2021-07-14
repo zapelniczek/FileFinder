@@ -1,11 +1,8 @@
 #include <iostream>
-#include <chrono>
+
 #include <filesystem>
 #include <numeric>
 #include "FileSearcher.h"
-
-namespace fs = std::filesystem;
-namespace chr = std::chrono;
 
 int main()
 { 
@@ -19,18 +16,19 @@ int main()
 
     std::cout << "\nPlease enter the file name in order to find it.\n\n";
 
-    std::string fileName;
+    std::wstring fileName;
 
     std::cout << "Searched file name: ";
-    while (std::getline(std::cin, fileName))
+    while (std::getline(std::wcin, fileName))
     {
         searcher.setFileName(fileName);
 
         std::cout << '\n';
         chr::time_point start_point = chr::system_clock::now();
-
-        //search
-        //result
+        searcher.searchFile();
+        chr::time_point end_point = chr::system_clock::now();
+        searcher.displaySearchResults(chr::duration_cast<std::chrono::milliseconds>(end_point - start_point));
+        
         if (searcher.getAdviceFlag())
             searcher.showAdvice();
         

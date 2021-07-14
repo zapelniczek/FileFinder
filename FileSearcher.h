@@ -1,20 +1,35 @@
 #pragma once
 #include <string>
+#include <map>
 #include <vector>
+#include <chrono>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+namespace chr = std::chrono;
 
 class FileSearcher
 {
+    enum SearchType : int {Stem = 1, Extension = 2, FullName = 3};
 private:
-    std::string currFile;
+    std::wstring currFile;
 
     bool cntFlag = true;
     bool adviceFlag = true;
+
+    SearchType typeOfSearch;
     
     std::vector<char> rootNames;
-
+    std::multimap <fs::path, fs::file_type> findResults; // Container is multimap because on some system you may
+                                                          // have file without extension with the same name as folder.
     void checkRootNames();
 
+    void setTypeOfSearch();
+
 public:
+    void searchFile();
+
+    void displaySearchResults(chr::milliseconds time);
 
     void setFlags();
 
@@ -22,10 +37,7 @@ public:
 
     void setRootNames();
 
-    void setFileName(const std::string& name) 
-    {
-        currFile = name;
-    }
+    void setFileName(const std::wstring& name);
 
     void setAdviceFlag(bool flag) 
     { 
@@ -46,6 +58,5 @@ public:
     {
         return cntFlag;
     }
-
 };
 

@@ -2,6 +2,92 @@
 #include <iostream>
 #include <algorithm>
 
+void FileSearcher::searchFile()
+{
+    using namespace std::string_literals;
+
+    for (const auto& i : rootNames)
+    {
+        try
+        {
+            fs::path rootPath(char(std::toupper(i)) + ":\\"s);
+            if (!fs::exists(rootPath))
+                continue;
+
+            for (const auto& i : fs::recursive_directory_iterator(rootPath, fs::directory_options::skip_permission_denied)) //Search exclude sym_links
+            {
+                std::wstring entryName;
+
+                switch (typeOfSearch)
+                {
+                case SearchType::Extension:
+                {
+                    entryName = i.path().extension().wstring();
+                    break;
+                }
+                case SearchType::FullName:
+                {
+                    entryName = i.path().filename().wstring();
+                    break;
+                }
+                case SearchType::Stem: 
+                {
+                   entryName = i.path().stem().wstring();
+                   break;
+                }
+                }
+                if (!entryName.empty() && entryName == currFile)
+                    findResults.insert({ fs::absolute(i.path()), i.status().type() });
+            }
+        }
+
+        catch (fs::filesystem_error& error)
+        {
+            std::cerr << "Error occured: " << error.what() << '\n'
+                << "at path: " << error.path1() << ".\n\n";
+        }
+    }
+}
+
+void FileSearcher::displaySearchResults(chr::milliseconds time)
+{
+    std::cout << "Searching for the file took: " << time.count() << "ms.\n";
+
+    if(!findResults.empty())
+        std::cout << "The subsequent file(s) has been found: \n";
+    else
+    {
+        std::cout << "File has not been found.\n\n";
+        return;
+    }
+
+    for (auto& [path, type] : findResults)
+    {
+        std::wcout << (type == fs::file_type::directory ? "Directory" : "Regular file") << " at path: "
+              << path.lexically_normal().wstring() << '\n'; 
+        // This may give incorrect results if you are using UNIX systems - more types of files
+    }
+    std::cout << '\n';
+}
+
+void FileSearcher::setFileName(const std::wstring& name)
+{
+    currFile = name;
+    setTypeOfSearch();
+}
+
+void FileSearcher::setTypeOfSearch()
+{
+    if (currFile[0] == '.')
+        typeOfSearch = SearchType::Extension;
+
+    else if (currFile.find('.') != std::string::npos)
+        typeOfSearch = SearchType::FullName;
+
+    else
+        typeOfSearch = SearchType::Stem;
+}
+
 void FileSearcher::showAdvice()
 {
     std::cout << "If you want to search another file press 1.\n"

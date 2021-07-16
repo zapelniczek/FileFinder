@@ -8,9 +8,11 @@
 namespace fs = std::filesystem;
 namespace chr = std::chrono;
 
+/*The target OS for the class in Windows.
+Class should work on other OS but the performance may be worse than the target OS.*/
 class FileSearcher
 {
-    enum SearchType : int {Stem = 1, Extension = 2, FullName = 3};
+    enum class SearchType : int {Stem = 1, Extension = 2, FullName = 3};
 private:
     std::wstring currFile;
 
@@ -25,8 +27,13 @@ private:
     void checkRootNames();
 
     void setTypeOfSearch();
+    
+    std::wstring getEntryName(const fs::path&) const;
+
+    std::wstring getEntryType(fs::file_type) const;
 
 public:
+
     void searchFile();
 
     void displaySearchResults(chr::milliseconds time);

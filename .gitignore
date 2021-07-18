@@ -1,2 +1,4 @@
 #Automatically created files
 *.vcxproj*
+*Debug*
+*.vs*

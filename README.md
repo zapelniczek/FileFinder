@@ -1,5 +1,9 @@
 # FileFinder
-This is app which sequentially find occurences of files and directories in filesystem. The target platform for the app is Windows.
+Currently there are 2 version of this program which are located on distinctive branches.
+
+Branch "main" contains sequential version of the program. This version should be preferred in cases when search only take place on one disk.
+
+Branch "concurrent1" contains concurrent version of the program. This version should be used when you want to search took place on multiple disk. This version should be used as default if you can't choose version of the program.
 
 # Remark
-The concurrent version is coming soon. There will be 2 version of concurrent code on distinctive branches.
+3rd version of concurrent search is coming soon

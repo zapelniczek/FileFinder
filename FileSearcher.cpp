@@ -287,9 +287,9 @@ void FileSearcher::checkRootNames()
 	rootNames.erase(it, rootNames.end());
 
 	int i = 0;
-	for (auto& i : rootNames)
+	for (auto& c : rootNames)
 	{
-		fs::path rootPath(char(std::toupper(i)) + ":\\"s);
+		fs::path rootPath(char(std::toupper(c)) + ":\\"s);
 
 		if (!fs::exists(rootPath)) // remove incorrent roots
 		{

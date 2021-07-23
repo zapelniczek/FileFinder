@@ -6,4 +6,4 @@ The target platoform for the app is Windows but with some small adjustments it s
 
 # Remarks
 Depending on OS which you use you might need rights to traverse filesystem contents. It's recommended that you run this app with root, administrator privilges, etc..
->>>>>>> main
+

@@ -1,9 +1,9 @@
 # FileFinder
-Currently there are 2 version of this program which are located on distinctive branches.
+This is an application which will help you find specific file(s) on your disk(s). The search is simultaneous it means that threads are assigned to disks during the search to get the best performance.
 
-Branch "main" contains sequential version of the program. This version should be preferred in cases when search only take place on one disk.
+# Target OS
+The target platoform for the app is Windows but with some small adjustments it should work on other platforms as well. Places where those adjustment needed are commended in code.
 
-Branch "concurrent1" contains concurrent version of the program. This version should be used when you want to search took place on multiple disk. This version should be used as default if you can't choose version of the program.
-
-# Remark
-3rd version of concurrent search is coming soon
+# Remarks
+Depending on OS which you use you might need rights to traverse filesystem contents. It's recommended that you run this app with root, administrator privilges, etc..
+>>>>>>> main

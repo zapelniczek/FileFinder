@@ -2,26 +2,95 @@
 #include <iostream>
 #include <algorithm>
 
+FileSearcher::FileSearcher() : typeOfSearch(SearchType::NotSet)
+{
+	m_thredID = std::this_thread::get_id();
+	max_threads.store(std::thread::hardware_concurrency()); //This number is just sugestion - normally test to find optimal number
+}
+
 void FileSearcher::searchFile()
 {
 	using namespace std::string_literals;
 
-	for (const auto& i : rootNames)
+	std::unique_lock lk(m_mutex);
+	while (!pendingRoots.empty())
 	{
 		try
 		{
-			fs::path rootPath(char(std::toupper(i)) + ":\\"s);
-			if (!fs::exists(rootPath))
-				continue;
+			char c = *pendingRoots.begin();
+			fs::path rootPath(char(std::toupper(c)) + ":\\"s);
 
-			//Search exclude sym_links
-			for (const auto& i : fs::recursive_directory_iterator(rootPath, fs::directory_options::skip_permission_denied)) 
+			if (pendingRoots.size() > 1 && m_threads.load() < max_threads) 
 			{
-				std::wstring entryName = getEntryName(i.path());
-				
-				if (!entryName.empty() && entryName == currFile)
-					findResults.insert({ fs::absolute(i.path()), i.status().type() });
+				std::future future = std::async(std::launch::async,
+					&FileSearcher::searchOnDisk, this, rootPath);
+				futures.push_back(std::move(future));
+				++m_threads;
+				pendingRoots.erase(pendingRoots.begin());
 			}
+			else 
+			{
+					pendingRoots.erase(pendingRoots.begin()); 
+					lk.unlock();
+					searchOnDisk(rootPath);
+					lk.lock(); 
+			}
+		}
+		catch (fs::filesystem_error& error)
+		{
+			std::wcerr << "Error occured: " << error.what() << '\n'
+				<< "at path: " << error.path1() << ".\n\n";
+		}
+	}
+	lk.unlock();
+	retrieveFutures();
+}
+
+void FileSearcher::searchOnDisk(fs::path rootPath)
+{
+	//Search exclude sym_links
+	for (const auto& i : fs::recursive_directory_iterator(rootPath, fs::directory_options::skip_permission_denied))
+	{
+		std::wstring entryName = getEntryName(i.path());
+		if (!entryName.empty() && entryName == currFile)
+		{
+			std::lock_guard lk_guard(m_mutex);
+			findResults.insert({ fs::absolute(i.path()), i.status().type() });
+		}
+
+		if (!pendingRoots.empty() && m_threads < max_threads )
+		{
+			std::lock_guard lk_guard(m_mutex); // Closed so you won't start bunch of tasks at the same time
+			distribute_work();
+		}
+	}
+
+	if(std::this_thread::get_id() != m_thredID)
+		--m_threads;
+}
+
+/*Start a new thread in order to search another disk*/
+void FileSearcher::distribute_work()
+{
+	using namespace std::string_literals;
+	while (!pendingRoots.empty())
+	{
+		try
+		{
+			if (m_threads.load() < max_threads)
+			{
+				char c = *pendingRoots.begin();
+				fs::path rootPath(char(std::toupper(c)) + ":\\"s);
+
+				std::future future = std::async(std::launch::async,
+					&FileSearcher::searchOnDisk, this, rootPath);
+				futures.push_back(std::move(future));
+
+				++m_threads;
+				pendingRoots.erase(pendingRoots.begin());
+			}
+			else
+				return;
 		}
 
 		catch (fs::filesystem_error& error)
@@ -75,6 +144,15 @@ void FileSearcher::displaySearchResults(chr::milliseconds time)
 		
 	}
 	std::cout << '\n';
+}
+
+void FileSearcher::retrieveFutures()
+{
+	for (auto& i : futures)
+	{
+		i.get();
+	}
+	futures.clear();
 }
 
 std::wstring FileSearcher::getEntryType(fs::file_type type) const 
@@ -163,6 +241,9 @@ void FileSearcher::setFlags()
 			break;
 
 		case '1':
+			pendingRoots.resize(rootNames.size());
+			std::copy(rootNames.begin(), rootNames.end(), pendingRoots.begin());
+
 			cntFlag = true;
 			std::cout << "Search of files is continued.\n\n";
 			break;
@@ -200,19 +281,35 @@ void FileSearcher::setFlags()
 whether root name is correctly formed under OS indications*/
 void FileSearcher::checkRootNames()
 {
+	using namespace std::string_literals;
+
 	auto it = std::unique(rootNames.begin(), rootNames.end());
 	rootNames.erase(it, rootNames.end());
+
+	int i = 0;
+	for (auto& c : rootNames)
+	{
+		fs::path rootPath(char(std::toupper(c)) + ":\\"s);
+
+		if (!fs::exists(rootPath)) // remove incorrent roots
+		{
+			rootNames.erase(rootNames.begin() + i);
+			pendingRoots.erase(rootNames.begin() + i);
+			continue;
+		}
+		++i;
+	}
 }
 
 /*This functions assume that you are using Windows. The root names may be incorrect for other platforms.*/
 void FileSearcher::setRootNames()
 {
-	char rootName;
+	char volume;
 
-	while (std::cin >> rootName)
+	while (std::cin >> volume)
 	{
-		if (std::isalpha(rootName))
-			rootNames.push_back(rootName);
+		if (std::isalpha(volume))
+			rootNames.push_back(volume);
 		else
 			break;
 	}
@@ -222,4 +319,7 @@ void FileSearcher::setRootNames()
 		std::cin.clear();
 
 	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+	pendingRoots.resize(rootNames.size());
+	std::copy(rootNames.begin(), rootNames.end(), pendingRoots.begin());
 }
